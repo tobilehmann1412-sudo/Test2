@@ -58,6 +58,7 @@ int WZLEDESSa = 0;
 int WZLAMPESSa = 0;
 int KLAMPa = 0;
 int KLEDa = 0;
+int BadA = 0;  // zuletzt gesendeter AN/AUS-Zustand fuer den Badspiegel-Relais (fuer die Web-UI-Statusanzeige)
 int WZLEDTV;
 int WZLEDESS;
 int WZLEDTVSoll = 0;
@@ -212,16 +213,22 @@ void sendRelayCommand(const char* code) {
 
 // Web-UI: Karte mit zwei Buttons (z.B. AN/AUS oder Start/STOP).
 // Alle Strings kommen ueber F() aus dem Flash, damit die Web-UI kein zusaetzliches RAM kostet.
-void printToggleCard(EthernetClient &c, const __FlashStringHelper* title,
+// stateKey markiert beide Buttons mit data-k/data-v, damit das Polling-JS im /state-Status
+// den jeweils aktuellen Button hervorheben kann (siehe pollState() im Seiten-Script).
+void printToggleCard(EthernetClient &c, const __FlashStringHelper* title, const __FlashStringHelper* stateKey,
                       const __FlashStringHelper* onHref, const __FlashStringHelper* onLabel,
                       const __FlashStringHelper* offHref, const __FlashStringHelper* offLabel) {
   c.print(F("<div class='card'><h3>"));
   c.print(title);
-  c.print(F("</h3><div class='btnrow'><a class='btn on' href='"));
+  c.print(F("</h3><div class='btnrow'><a class='btn on' data-k='"));
+  c.print(stateKey);
+  c.print(F("' data-v='1' href='"));
   c.print(onHref);
   c.print(F("'>"));
   c.print(onLabel);
-  c.print(F("</a><a class='btn off' href='"));
+  c.print(F("</a><a class='btn off' data-k='"));
+  c.print(stateKey);
+  c.print(F("' data-v='0' href='"));
   c.print(offHref);
   c.print(F("'>"));
   c.print(offLabel);
@@ -1588,7 +1595,41 @@ next:
         if (c == '\n') {
           Serial.println(readString);  //print to serial monitor for debuging
 
+          // Leichtgewichtiger Status-Endpunkt fuers Polling der Web-UI (Lampen AN/AUS + Dimmwerte),
+          // damit nicht bei jedem Poll die komplette Seite neu aufgebaut werden muss.
+          bool isStateRequest = readString.indexOf("GET /state") >= 0;
+
           client.println(F("HTTP/1.1 200 OK"));  //send new page
+          if (isStateRequest) {
+            client.println(F("Content-Type: text/plain"));
+            client.println();
+            client.print(F("sz="));
+            client.print(SZM);
+            client.print(F("&ak="));
+            client.print(LICHTAK);
+            client.print(F("&bad="));
+            client.print(BadA);
+            client.print(F("&bu="));
+            client.print(digitalRead(Kinderzimmer) == LOW ? 1 : 0);
+            client.print(F("&ku="));
+            client.print(KLAMPa);
+            client.print(F("&kl="));
+            client.print(KLEDa);
+            client.print(F("&we="));
+            client.print(WZLAMPa);
+            client.print(F("&wt="));
+            client.print(TVLAMPa);
+            client.print(F("&pump="));
+            client.print(BADF1Soll > 0 ? 1 : 0);
+            client.print(F("&szl="));
+            client.print(LEDSZSoll);
+            client.print(F("&wel="));
+            client.print(WZLEDTVSoll);
+            client.print(F("&wtl="));
+            client.print(WZLEDESSSoll);
+            client.print(F("&fl="));
+            client.println(LEDFLSoll);
+          } else {
           client.println(F("Content-Type: text/html"));
           client.println();
           client.println(F("<HTML>"));
@@ -1609,9 +1650,10 @@ next:
           client.println(F(".card{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 2px 6px rgba(0,0,0,.35)}"));
           client.println(F(".card h3{margin:0 0 12px;font-size:.95rem;font-weight:600}"));
           client.println(F(".btnrow,.btn3{display:flex;gap:8px}"));
-          client.println(F(".btn{flex:1;text-align:center;padding:11px 0;border-radius:999px;text-decoration:none;font-weight:700;font-size:.8rem;color:#fff;letter-spacing:.02em}"));
+          client.println(F(".btn{flex:1;text-align:center;padding:11px 0;border-radius:999px;text-decoration:none;font-weight:700;font-size:.8rem;color:#fff;letter-spacing:.02em;transition:opacity .2s}"));
           client.println(F(".btn.on{background:var(--on)}"));
           client.println(F(".btn.off{background:var(--off)}"));
+          client.println(F(".btn.dim{opacity:.35}"));
           client.println(F(".btn.stop{background:var(--stop);color:#1a1a1a}"));
           client.println(F(".val{margin:0 0 6px;font-size:.8rem;color:var(--muted)}"));
           client.println(F(".val span{color:var(--text);font-weight:700}"));
@@ -1623,21 +1665,21 @@ next:
 
           client.println(F("<section><h2>Licht</h2><div class='grid'>"));
 
-          client.print(F("<div class='card'><h3>Schlafzimmer</h3><div class='btnrow'><a class='btn on' href='/?button1on'>AN</a><a class='btn off' href='/?button1off'>AUS</a></div>"));
+          client.print(F("<div class='card'><h3>Schlafzimmer</h3><div class='btnrow'><a class='btn on' data-k='sz' data-v='1' href='/?button1on'>AN</a><a class='btn off' data-k='sz' data-v='0' href='/?button1off'>AUS</a></div>"));
           client.print(F("<p class='val' style='margin-top:12px'>LED: <span id='sliderSZval'>"));
           client.print(LEDSZSoll);
           client.print(F("</span></p><input type='range' min='0' max='1023' class='slider' id='sliderSZ' value='"));
           client.print(LEDSZSoll);
           client.println(F("'></div>"));
 
-          printToggleCard(client, F("Ankleide"), F("/?button2on"), F("AN"), F("/?button2off"), F("AUS"));
-          printToggleCard(client, F("Badspiegel"), F("/?button3on"), F("AN"), F("/?button3off"), F("AUS"));
-          printToggleCard(client, F("Buero"), F("/?button4on"), F("AN"), F("/?button4off"), F("AUS"));
-          printToggleCard(client, F("Kueche"), F("/?button5on"), F("AN"), F("/?button5off"), F("AUS"));
-          printToggleCard(client, F("KuecheLED"), F("/?button5LEDon"), F("AN"), F("/?button5LEDoff"), F("AUS"));
-          printToggleCard(client, F("Wohnzimmer Esstisch"), F("/?button6on"), F("AN"), F("/?button6off"), F("AUS"));
+          printToggleCard(client, F("Ankleide"), F("ak"), F("/?button2on"), F("AN"), F("/?button2off"), F("AUS"));
+          printToggleCard(client, F("Badspiegel"), F("bad"), F("/?button3on"), F("AN"), F("/?button3off"), F("AUS"));
+          printToggleCard(client, F("Buero"), F("bu"), F("/?button4on"), F("AN"), F("/?button4off"), F("AUS"));
+          printToggleCard(client, F("Kueche"), F("ku"), F("/?button5on"), F("AN"), F("/?button5off"), F("AUS"));
+          printToggleCard(client, F("KuecheLED"), F("kl"), F("/?button5LEDon"), F("AN"), F("/?button5LEDoff"), F("AUS"));
+          printToggleCard(client, F("Wohnzimmer Esstisch"), F("we"), F("/?button6on"), F("AN"), F("/?button6off"), F("AUS"));
           printSliderCard(client, F("Wohnzimmer LED Esstisch"), F("sliderWZ"), F("sliderWZval"), WZLEDTVSoll);
-          printToggleCard(client, F("Wohnzimmer TV"), F("/?button7on"), F("AN"), F("/?button7off"), F("AUS"));
+          printToggleCard(client, F("Wohnzimmer TV"), F("wt"), F("/?button7on"), F("AN"), F("/?button7off"), F("AUS"));
           printSliderCard(client, F("Wohnzimmer LED TV"), F("sliderWZESS"), F("sliderWZESSval"), WZLEDESSSoll);
           printSliderCard(client, F("Flur"), F("sliderFL"), F("sliderFLval"), LEDFLSoll);
 
@@ -1657,7 +1699,7 @@ next:
 
           client.println(F("<section><h2>Sonstiges</h2><div class='grid'>"));
           printLinkCard3(client, F("LED Aussen"), F("/?LEDAS1"), F("Sequenz 1"), F("/?LEDAS2"), F("Sequenz 2"), F("/?LEDAAus"), F("AUS"));
-          printToggleCard(client, F("Umwaelzpumpe"), F("/?Pumpean"), F("Start"), F("/?Pumpestop"), F("STOP"));
+          printToggleCard(client, F("Umwaelzpumpe"), F("pump"), F("/?Pumpean"), F("Start"), F("/?Pumpestop"), F("STOP"));
           client.println(F("</div></section>"));
 
           client.println(F("<script>"));
@@ -1668,10 +1710,21 @@ next:
           client.println(F("bindSlider('sliderWZ','sliderWZval','valueWZ');"));
           client.println(F("bindSlider('sliderWZESS','sliderWZESSval','valueWZESS');"));
           client.println(F("bindSlider('sliderFL','sliderFLval','valueFL');"));
+          client.println(F("var sliderKeys={sliderSZ:'szl',sliderWZ:'wel',sliderWZESS:'wtl',sliderFL:'fl'};"));
+          client.println(F("function pollState(){fetch('/state').then(function(r){return r.text();}).then(function(t){"));
+          client.println(F("var s={};t.trim().split('&').forEach(function(p){var kv=p.split('=');s[kv[0]]=kv[1];});"));
+          client.println(F("document.querySelectorAll('[data-k]').forEach(function(el){var k=el.getAttribute('data-k');"));
+          client.println(F("if(s[k]===undefined)return;el.classList.toggle('dim',el.getAttribute('data-v')!==s[k]);});"));
+          client.println(F("Object.keys(sliderKeys).forEach(function(id){var key=sliderKeys[id];if(s[key]===undefined)return;"));
+          client.println(F("var sl=document.getElementById(id),sp=document.getElementById(id+'val');"));
+          client.println(F("if(sl&&document.activeElement!==sl)sl.value=s[key];if(sp)sp.textContent=s[key];});"));
+          client.println(F("}).catch(function(){});}"));
+          client.println(F("pollState();setInterval(pollState,2000);"));
           client.println(F("</script>"));
 
           client.println(F("</BODY>"));
           client.println(F("</HTML>"));
+          }
 
           delay(1);
           //stopping client
@@ -1896,6 +1949,7 @@ next:
           //BADE
           if (readString.indexOf("?button3on") > 0) {
             // digitalWrite(Bad, HIGH);
+            BadA = 1;
             int HTTP_PORT = 80;
             String HTTP_METHOD = "GET";
             IPAddress HOST_NAME(192, 168, 2, 213);  // hostname of web server:
@@ -1928,6 +1982,7 @@ next:
           }
           if (readString.indexOf("?button3off") > 0) {
             //digitalWrite(Bad, LOW);
+            BadA = 0;
             int HTTP_PORT = 80;
             String HTTP_METHOD = "GET";
             IPAddress HOST_NAME(192, 168, 2, 213);  // hostname of web server:
