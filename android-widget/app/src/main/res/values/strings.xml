@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Lichtschalter</string>
+    <string name="refresh">Aktualisieren</string>
+    <string name="configure_title">Lichtschalter-Widget einrichten</string>
+    <string name="configure_hint">IP-Adresse des Controllino im lokalen Netzwerk (z. B. 192.168.2.200). Das Handy muss im selben WLAN sein.</string>
+    <string name="ip_hint">IP-Adresse</string>
+    <string name="save">Speichern</string>
+    <string name="error_no_connection">Keine Verbindung – IP prüfen</string>
+</resources>
