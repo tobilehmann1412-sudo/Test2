@@ -210,6 +210,70 @@ void sendRelayCommand(const char* code) {
   client.stop();
 }
 
+// Web-UI: Karte mit zwei Buttons (z.B. AN/AUS oder Start/STOP).
+// Alle Strings kommen ueber F() aus dem Flash, damit die Web-UI kein zusaetzliches RAM kostet.
+void printToggleCard(EthernetClient &c, const __FlashStringHelper* title,
+                      const __FlashStringHelper* onHref, const __FlashStringHelper* onLabel,
+                      const __FlashStringHelper* offHref, const __FlashStringHelper* offLabel) {
+  c.print(F("<div class='card'><h3>"));
+  c.print(title);
+  c.print(F("</h3><div class='btnrow'><a class='btn on' href='"));
+  c.print(onHref);
+  c.print(F("'>"));
+  c.print(onLabel);
+  c.print(F("</a><a class='btn off' href='"));
+  c.print(offHref);
+  c.print(F("'>"));
+  c.print(offLabel);
+  c.println(F("</a></div></div>"));
+}
+
+// Web-UI: Karte mit drei Buttons (z.B. AUF/STOP/ZU oder Sequenz1/Sequenz2/AUS).
+void printLinkCard3(EthernetClient &c, const __FlashStringHelper* title,
+                     const __FlashStringHelper* href1, const __FlashStringHelper* label1,
+                     const __FlashStringHelper* href2, const __FlashStringHelper* label2,
+                     const __FlashStringHelper* href3, const __FlashStringHelper* label3) {
+  c.print(F("<div class='card'><h3>"));
+  c.print(title);
+  c.print(F("</h3><div class='btn3'><a class='btn on' href='"));
+  c.print(href1);
+  c.print(F("'>"));
+  c.print(label1);
+  c.print(F("</a><a class='btn stop' href='"));
+  c.print(href2);
+  c.print(F("'>"));
+  c.print(label2);
+  c.print(F("</a><a class='btn off' href='"));
+  c.print(href3);
+  c.print(F("'>"));
+  c.print(label3);
+  c.println(F("</a></div></div>"));
+}
+
+// Web-UI: Rollo-Karte mit AUF/STOP/ZU.
+void printRolloCard(EthernetClient &c, const __FlashStringHelper* title,
+                     const __FlashStringHelper* upHref, const __FlashStringHelper* stopHref,
+                     const __FlashStringHelper* downHref) {
+  printLinkCard3(c, title, upHref, F("AUF"), stopHref, F("STOP"), downHref, F("ZU"));
+}
+
+// Web-UI: Karte mit Dimmer-Slider.
+void printSliderCard(EthernetClient &c, const __FlashStringHelper* title,
+                      const __FlashStringHelper* sliderId, const __FlashStringHelper* spanId,
+                      int value) {
+  c.print(F("<div class='card'><h3>"));
+  c.print(title);
+  c.print(F("</h3><p class='val'>LED: <span id='"));
+  c.print(spanId);
+  c.print(F("'>"));
+  c.print(value);
+  c.print(F("</span></p><input type='range' min='0' max='1023' class='slider' id='"));
+  c.print(sliderId);
+  c.print(F("' value='"));
+  c.print(value);
+  c.println(F("'></div>"));
+}
+
 void setup() {
   // Open serial communications and wait for port to open:
   Serial.begin(115200);
@@ -1529,196 +1593,83 @@ next:
           client.println();
           client.println(F("<HTML>"));
           client.println(F("<HEAD>"));
+          client.println(F("<meta charset='UTF-8'>"));
+          client.println(F("<meta name='viewport' content='width=device-width, initial-scale=1'>"));
           client.println(F("<meta name='apple-mobile-web-app-capable' content='yes' />"));
           client.println(F("<meta name='apple-mobile-web-app-status-bar-style' content='black-translucent' />"));
-          client.println(F("<link rel='stylesheet' type='text/css' href='http://randomnerdtutorials.com/ethernetcss.css' />"));
-          //client.println(F("<meta http-equiv='refresh' content='5'>"));
           client.println(F("<TITLE>Lichtschalter</TITLE>"));
+          client.println(F("<style>"));
+          client.println(F(":root{--bg:#0f172a;--card:#1e293b;--text:#e6edf3;--muted:#94a3b8;--accent:#38bdf8;--on:#22c55e;--off:#475569;--stop:#f59e0b}"));
+          client.println(F("*{box-sizing:border-box}"));
+          client.println(F("body{margin:0;padding:16px 12px 40px;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}"));
+          client.println(F("h1{text-align:center;font-size:1.4rem;margin:4px 0 24px}"));
+          client.println(F("section{max-width:960px;margin:0 auto 28px}"));
+          client.println(F("section h2{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px 4px}"));
+          client.println(F(".grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}"));
+          client.println(F(".card{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 2px 6px rgba(0,0,0,.35)}"));
+          client.println(F(".card h3{margin:0 0 12px;font-size:.95rem;font-weight:600}"));
+          client.println(F(".btnrow,.btn3{display:flex;gap:8px}"));
+          client.println(F(".btn{flex:1;text-align:center;padding:11px 0;border-radius:999px;text-decoration:none;font-weight:700;font-size:.8rem;color:#fff;letter-spacing:.02em}"));
+          client.println(F(".btn.on{background:var(--on)}"));
+          client.println(F(".btn.off{background:var(--off)}"));
+          client.println(F(".btn.stop{background:var(--stop);color:#1a1a1a}"));
+          client.println(F(".val{margin:0 0 6px;font-size:.8rem;color:var(--muted)}"));
+          client.println(F(".val span{color:var(--text);font-weight:700}"));
+          client.println(F("input[type=range]{width:100%;accent-color:var(--accent);height:26px}"));
+          client.println(F("</style>"));
           client.println(F("</HEAD>"));
           client.println(F("<BODY>"));
           client.println(F("<H1>Lichtschalter</H1>"));
-          client.println(F("<hr />"));
-          client.println(F("<H3>Schlafzimmer</H3>"));
-          client.println(F("<a href=\"/?button1on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button1off\"\">Licht AUS</a><br />"));
-          client.println(F("<hr />"));
-          client.println(F("<style>body { text-align: center; font-family: \"Trebuchet MS\", Arial; margin-left:auto; margin-right:auto;}"));
-          client.println(F(".slider { width: 500px; }</style>"));
-          client.println(F("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js\"></script>"));
-          client.print(F("<p>LED: <span id='servoPos2'>"));
+
+          client.println(F("<section><h2>Licht</h2><div class='grid'>"));
+
+          client.print(F("<div class='card'><h3>Schlafzimmer</h3><div class='btnrow'><a class='btn on' href='/?button1on'>AN</a><a class='btn off' href='/?button1off'>AUS</a></div>"));
+          client.print(F("<p class='val' style='margin-top:12px'>LED: <span id='sliderSZval'>"));
           client.print(LEDSZSoll);
-          client.println(F("</span></p>"));
-          client.print(F("<input type='range' min='0' max='1023'  class='slider' id='servoSlider2'  value="));
+          client.print(F("</span></p><input type='range' min='0' max='1023' class='slider' id='sliderSZ' value='"));
           client.print(LEDSZSoll);
-          client.println(F("  onchange='servo2(this.value)'>"));
-          client.println(F("<script>var slider2 = document.getElementById(\"servoSlider2\");"));
-          client.println(F("var servoP2 = document.getElementById(\"servoPos2\"); servoP2.innerHTML = slider2.value;"));
-          client.println(F("slider2.oninput = function() { slider2.value = this.value; servoP2.innerHTML = this.value; }"));
-          client.println(F("$.ajaxSetup({timeout:1000}); function servo2(pos) { "));
-          client.println(F("$.get(\"/?valueSZ=\" + pos + \"&\"); {Connection: close};}</script>"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Ankleide</H3>"));
-          client.println(F("<a href=\"/?button2on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button2off\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Badspiegel</H3>"));
-          client.println(F("<a href=\"/?button3on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button3off\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Buero</H3>"));
-          client.println(F("<a href=\"/?button4on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button4off\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Kueche</H3>"));
-          client.println(F("<a href=\"/?button5on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button5off\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>KuecheLED</H3>"));
-          client.println(F("<a href=\"/?button5LEDon\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button5LEDoff\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Wohnzimmer Esstisch</H3>"));
-          client.println(F("<a href=\"/?button6on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button6off\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Wohnzimmer LED Esstisch</H3>"));
-          client.println(F("<style>body { text-align: center; font-family: \"Trebuchet MS\", Arial; margin-left:auto; margin-right:auto;}"));
-          client.println(F(".slider { width: 500px; }</style>"));
-          client.println(F("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js\"></script>"));
-          client.print(F("<p>LED: <span id='servoPos4'>"));
-          client.print(WZLEDTVSoll);
-          client.println(F("</span></p>"));
-          client.print(F("<input type=\"range\" min=\"0\" max=\"1023\" class=\"slider\" id=\"servoSlider4\" value="));
-          client.print(WZLEDTVSoll);
-          client.println(F("  onchange='servo4(this.value)'>"));
-          client.println(F("<script>var slider4 = document.getElementById(\"servoSlider4\");"));
-          client.println(F("var servoP4 = document.getElementById(\"servoPos4\"); servoP4.innerHTML = slider4.value;"));
-          client.println(F("slider4.oninput = function() { slider4.value = this.value; servoP4.innerHTML = this.value; }"));
-          client.println(F("$.ajaxSetup({timeout:1000}); function servo4(pos) { "));
-          client.println(F("$.get(\"/?valueWZ=\" + pos + \"&\"); {Connection: close};}</script>"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Wohnzimmer TV</H3>"));
-          client.println(F("<a href=\"/?button7on\"\">Licht AN</a>"));
-          client.println(F("<a href=\"/?button7off\"\">Licht AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Wohnzimmer LED TV</H3>"));
-          client.println(F("<style>body { text-align: center; font-family: \"Trebuchet MS\", Arial; margin-left:auto; margin-right:auto;}"));
-          client.println(F(".slider { width: 500px; }</style>"));
-          client.println(F("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js\"></script>"));
-          client.print(F("<p>LED: <span id='servoPos'>"));
-          client.print(WZLEDESSSoll);
-          client.println(F("</span></p>"));
-          client.print(F("<input type=\"range\" min=\"0\" max=\"1023\" class=\"slider\" id=\"servoSlider\" value="));
-          client.print(WZLEDESSSoll);
-          client.println(F("  onchange='servo(this.value)'>"));
-          client.println(F("<script>var slider = document.getElementById(\"servoSlider\");"));
-          client.println(F("var servoP = document.getElementById(\"servoPos\"); servoP.innerHTML = slider.value;"));
-          client.println(F("slider.oninput = function() { slider.value = this.value; servoP.innerHTML = this.value; }"));
-          client.println(F("$.ajaxSetup({timeout:1000}); function servo(pos) { "));
-          client.println(F("$.get(\"/?valueWZESS=\" + pos + \"&\"); {Connection: close};}</script>"));
-          client.println(F("<br />"));
+          client.println(F("'></div>"));
 
+          printToggleCard(client, F("Ankleide"), F("/?button2on"), F("AN"), F("/?button2off"), F("AUS"));
+          printToggleCard(client, F("Badspiegel"), F("/?button3on"), F("AN"), F("/?button3off"), F("AUS"));
+          printToggleCard(client, F("Buero"), F("/?button4on"), F("AN"), F("/?button4off"), F("AUS"));
+          printToggleCard(client, F("Kueche"), F("/?button5on"), F("AN"), F("/?button5off"), F("AUS"));
+          printToggleCard(client, F("KuecheLED"), F("/?button5LEDon"), F("AN"), F("/?button5LEDoff"), F("AUS"));
+          printToggleCard(client, F("Wohnzimmer Esstisch"), F("/?button6on"), F("AN"), F("/?button6off"), F("AUS"));
+          printSliderCard(client, F("Wohnzimmer LED Esstisch"), F("sliderWZ"), F("sliderWZval"), WZLEDTVSoll);
+          printToggleCard(client, F("Wohnzimmer TV"), F("/?button7on"), F("AN"), F("/?button7off"), F("AUS"));
+          printSliderCard(client, F("Wohnzimmer LED TV"), F("sliderWZESS"), F("sliderWZESSval"), WZLEDESSSoll);
+          printSliderCard(client, F("Flur"), F("sliderFL"), F("sliderFLval"), LEDFLSoll);
 
+          client.println(F("</div></section>"));
 
+          client.println(F("<section><h2>Rollos</h2><div class='grid'>"));
+          printRolloCard(client, F("Rollo Schlafzimmer"), F("/?buttonhoch"), F("/?buttonstop"), F("/?buttonrunter"));
+          printRolloCard(client, F("Rollo Bad rechts"), F("/?brbuttonhoch"), F("/?brbuttonstop"), F("/?brbuttonrunter"));
+          printRolloCard(client, F("Rollo Bad links"), F("/?blbuttonhoch"), F("/?blbuttonstop"), F("/?blbuttonrunter"));
+          printRolloCard(client, F("Rollo Buero rechts"), F("/?orbuttonhoch"), F("/?orbuttonstop"), F("/?orbuttonrunter"));
+          printRolloCard(client, F("Rollo Buero links"), F("/?olbuttonhoch"), F("/?olbuttonstop"), F("/?olbuttonrunter"));
+          printRolloCard(client, F("Rollo Kueche rechts"), F("/?krbuttonhoch"), F("/?krbuttonstop"), F("/?krbuttonrunter"));
+          printRolloCard(client, F("Rollo Kueche links"), F("/?klbuttonhoch"), F("/?klbuttonstop"), F("/?klbuttonrunter"));
+          printRolloCard(client, F("Rollo WZR"), F("/?WZRbuttonhoch"), F("/?WZRbuttonstop"), F("/?WZRbuttonrunter"));
+          printRolloCard(client, F("Rollo WZL"), F("/?WZLbuttonhoch"), F("/?WZLbuttonstop"), F("/?WZLbuttonrunter"));
+          client.println(F("</div></section>"));
 
+          client.println(F("<section><h2>Sonstiges</h2><div class='grid'>"));
+          printLinkCard3(client, F("LED Aussen"), F("/?LEDAS1"), F("Sequenz 1"), F("/?LEDAS2"), F("Sequenz 2"), F("/?LEDAAus"), F("AUS"));
+          printToggleCard(client, F("Umwaelzpumpe"), F("/?Pumpean"), F("Start"), F("/?Pumpestop"), F("STOP"));
+          client.println(F("</div></section>"));
 
+          client.println(F("<script>"));
+          client.println(F("function bindSlider(s,p,q){var sl=document.getElementById(s),sp=document.getElementById(p);"));
+          client.println(F("sl.oninput=function(){sp.textContent=this.value;};"));
+          client.println(F("sl.onchange=function(){fetch('/?'+q+'='+this.value+'&');};}"));
+          client.println(F("bindSlider('sliderSZ','sliderSZval','valueSZ');"));
+          client.println(F("bindSlider('sliderWZ','sliderWZval','valueWZ');"));
+          client.println(F("bindSlider('sliderWZESS','sliderWZESSval','valueWZESS');"));
+          client.println(F("bindSlider('sliderFL','sliderFLval','valueFL');"));
+          client.println(F("</script>"));
 
-
-
-          client.println(F("<H3>Flur</H3>"));
-          client.println(F("<style>body { text-align: center; font-family: \"Trebuchet MS\", Arial; margin-left:auto; margin-right:auto;}"));
-          client.println(F(".slider { width: 500px; }</style>"));
-          client.println(F("<script src=\"https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js\"></script>"));
-          client.print(F("<p>LED: <span id='servoPos3'>"));
-          client.print(LEDFLSoll);
-          client.println(F("</span></p>"));
-          client.print(F("<input type=\"range\" min=\"0\" max=\"1023\" class=\"slider\" id=\"servoSlider3\" value="));
-          client.print(LEDFLSoll);
-          client.println(F("  onchange='servo3(this.value)'>"));
-          client.println(F("<script>var slider3 = document.getElementById(\"servoSlider3\");"));
-          client.println(F("var servoP3 = document.getElementById(\"servoPos3\"); servoP3.innerHTML = slider3.value;"));
-          client.println(F("slider3.oninput = function() { slider3.value = this.value; servoP3.innerHTML = this.value; }"));
-          client.println(F("$.ajaxSetup({timeout:1000}); function servo3(pos) { "));
-          client.println(F("$.get(\"/?valueFL=\" + pos + \"&\"); {Connection: close};}</script>"));
-          client.println(F("<br />"));
-          client.println(F("<br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Schlafzimmer</H3>"));
-          client.println(F("<a href=\"/?buttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?buttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?buttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Bad rechts</H3>"));
-          client.println(F("<a href=\"/?brbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?brbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?brbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Bad links</H3>"));
-          client.println(F("<a href=\"/?blbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?blbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?blbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Buero rechts</H3>"));
-          client.println(F("<a href=\"/?orbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?orbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?orbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Buero links</H3>"));
-          client.println(F("<a href=\"/?olbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?olbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?olbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Kueche rechts</H3>"));
-          client.println(F("<a href=\"/?krbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?krbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?krbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo Kueche links</H3>"));
-          client.println(F("<a href=\"/?klbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?klbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?klbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo WZR</H3>"));
-          client.println(F("<a href=\"/?WZRbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?WZRbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?WZRbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Rollo WZL</H3>"));
-          client.println(F("<a href=\"/?WZLbuttonhoch\"\">AUF</a>"));
-          client.println(F("<a href=\"/?WZLbuttonstop\"\">STOP</a>"));
-          client.println(F("<a href=\"/?WZLbuttonrunter\"\">ZU</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>LED Ausen</H3>"));
-          client.println(F("<a href=\"/?LEDAS1\"\">Sequenz 1</a>"));
-          client.println(F("<a href=\"/?LEDAS2\"\">Sequenz 2</a>"));
-          client.println(F("<a href=\"/?LEDAAus\"\">AUS</a><br />"));
-          client.println(F("<br />"));
-          client.println(F("<br />"));
-          client.println(F("<H3>Umwaelzpumpe</H3>"));
-          client.println(F("<a href=\"/?Pumpean\"\">Start</a>"));
-          client.println(F("<a href=\"/?Pumpestop\"\">STOP</a><br />"));
-          client.println(F("<br />"));
-          /* client.println(AKTSek);
-            client.println(F("<br />"));
-            client.println(TAST2STATE);
-            /* client.println(F("<br />"));
-             client.println(BADF1Soll);
-             client.println(F("<br />"));
-             client.println(BADF1);
-             client.println(F("<br />"));
-             //client.println(BADTASTLU);
-             //   client.println(F("<br />"));
-             //   client.println(BADTASTLO);
-             //  client.println(F("<br />"));
-              /* client.println(BADTASTRU);
-            client.println(F("<br />"));
-            client.println(BADTASTLORO);
-            client.println(F("<br />"));
-            client.println(BADTASTLURU);
-            client.println(F("<br />"));
-            client.println(BADF1);*/
-          client.println(F("<br />"));
-          client.println(F("<br />"));
           client.println(F("</BODY>"));
           client.println(F("</HTML>"));
 
