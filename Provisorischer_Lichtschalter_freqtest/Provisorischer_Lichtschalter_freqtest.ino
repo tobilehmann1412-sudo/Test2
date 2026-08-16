@@ -257,11 +257,53 @@ void printLinkCard3(EthernetClient &c, const __FlashStringHelper* title,
   c.println(F("</a></div></div>"));
 }
 
-// Web-UI: Rollo-Karte mit AUF/STOP/ZU.
+// Web-UI: Rollo-Karte mit AUF/STOP/ZU, ohne Live-Status.
+// Diese Rollos haengen an einem externen Relais-Board (sendRelayCommand/C2) - der Controllino
+// bekommt nie eine Rueckmeldung, ob/wohin sie gerade fahren (auch nicht, wenn extern geschaltet
+// wurde), deshalb gibt es hier bewusst KEINE Zustandsanzeige statt einer falschen.
 void printRolloCard(EthernetClient &c, const __FlashStringHelper* title,
                      const __FlashStringHelper* upHref, const __FlashStringHelper* stopHref,
                      const __FlashStringHelper* downHref) {
   printLinkCard3(c, title, upHref, F("AUF"), stopHref, F("STOP"), downHref, F("ZU"));
+}
+
+// Web-UI: Rollo-Karte mit Richtungs-Status. Nur fuer Rollos, die der Controllino selbst direkt
+// per digitalWrite() faehrt (Schlafzimmer) - dort kennt er die Fahrtrichtung wirklich (ROLLOSZSTATE).
+void printRolloCardDir(EthernetClient &c, const __FlashStringHelper* title, const __FlashStringHelper* stateKey,
+                        const __FlashStringHelper* upHref, const __FlashStringHelper* stopHref,
+                        const __FlashStringHelper* downHref) {
+  c.print(F("<div class='card'><h3>"));
+  c.print(title);
+  c.print(F("</h3><div class='btn3'><a class='btn on' data-k='"));
+  c.print(stateKey);
+  c.print(F("' data-v='1' href='"));
+  c.print(upHref);
+  c.print(F("'>AUF</a><a class='btn stop' href='"));
+  c.print(stopHref);
+  c.print(F("'>STOP</a><a class='btn off' data-k='"));
+  c.print(stateKey);
+  c.print(F("' data-v='2' href='"));
+  c.print(downHref);
+  c.println(F("'>ZU</a></div></div>"));
+}
+
+// Web-UI: Rollo-Karte mit einfachem "laeuft"-Status auf dem STOP-Button. Fuer Rollos, die der
+// Controllino direkt faehrt, aber ohne eigene Richtungs-Variable (Kueche rechts, WZL, WZR) -
+// wir wissen nur "faehrt gerade", nicht wohin.
+void printRolloCardRun(EthernetClient &c, const __FlashStringHelper* title, const __FlashStringHelper* stateKey,
+                        const __FlashStringHelper* upHref, const __FlashStringHelper* stopHref,
+                        const __FlashStringHelper* downHref) {
+  c.print(F("<div class='card'><h3>"));
+  c.print(title);
+  c.print(F("</h3><div class='btn3'><a class='btn on' href='"));
+  c.print(upHref);
+  c.print(F("'>AUF</a><a class='btn stop' data-k='"));
+  c.print(stateKey);
+  c.print(F("' data-v='1' href='"));
+  c.print(stopHref);
+  c.print(F("'>STOP</a><a class='btn off' href='"));
+  c.print(downHref);
+  c.println(F("'>ZU</a></div></div>"));
 }
 
 // Web-UI: Karte mit Dimmer-Slider.
@@ -1628,7 +1670,15 @@ next:
             client.print(F("&wtl="));
             client.print(WZLEDESSSoll);
             client.print(F("&fl="));
-            client.println(LEDFLSoll);
+            client.print(LEDFLSoll);
+            client.print(F("&rsz="));
+            client.print(ROLLOSZSTATE);
+            client.print(F("&rkr="));
+            client.print(krdrive);
+            client.print(F("&rwzl="));
+            client.print(WZLdrive);
+            client.print(F("&rwzr="));
+            client.println(WZRdrive);
           } else {
           client.println(F("Content-Type: text/html"));
           client.println();
@@ -1686,15 +1736,15 @@ next:
           client.println(F("</div></section>"));
 
           client.println(F("<section><h2>Rollos</h2><div class='grid'>"));
-          printRolloCard(client, F("Rollo Schlafzimmer"), F("/?buttonhoch"), F("/?buttonstop"), F("/?buttonrunter"));
+          printRolloCardDir(client, F("Rollo Schlafzimmer"), F("rsz"), F("/?buttonhoch"), F("/?buttonstop"), F("/?buttonrunter"));
           printRolloCard(client, F("Rollo Bad rechts"), F("/?brbuttonhoch"), F("/?brbuttonstop"), F("/?brbuttonrunter"));
           printRolloCard(client, F("Rollo Bad links"), F("/?blbuttonhoch"), F("/?blbuttonstop"), F("/?blbuttonrunter"));
           printRolloCard(client, F("Rollo Buero rechts"), F("/?orbuttonhoch"), F("/?orbuttonstop"), F("/?orbuttonrunter"));
           printRolloCard(client, F("Rollo Buero links"), F("/?olbuttonhoch"), F("/?olbuttonstop"), F("/?olbuttonrunter"));
-          printRolloCard(client, F("Rollo Kueche rechts"), F("/?krbuttonhoch"), F("/?krbuttonstop"), F("/?krbuttonrunter"));
+          printRolloCardRun(client, F("Rollo Kueche rechts"), F("rkr"), F("/?krbuttonhoch"), F("/?krbuttonstop"), F("/?krbuttonrunter"));
           printRolloCard(client, F("Rollo Kueche links"), F("/?klbuttonhoch"), F("/?klbuttonstop"), F("/?klbuttonrunter"));
-          printRolloCard(client, F("Rollo WZR"), F("/?WZRbuttonhoch"), F("/?WZRbuttonstop"), F("/?WZRbuttonrunter"));
-          printRolloCard(client, F("Rollo WZL"), F("/?WZLbuttonhoch"), F("/?WZLbuttonstop"), F("/?WZLbuttonrunter"));
+          printRolloCardRun(client, F("Rollo WZR"), F("rwzr"), F("/?WZRbuttonhoch"), F("/?WZRbuttonstop"), F("/?WZRbuttonrunter"));
+          printRolloCardRun(client, F("Rollo WZL"), F("rwzl"), F("/?WZLbuttonhoch"), F("/?WZLbuttonstop"), F("/?WZLbuttonrunter"));
           client.println(F("</div></section>"));
 
           client.println(F("<section><h2>Sonstiges</h2><div class='grid'>"));
